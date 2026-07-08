@@ -21,6 +21,16 @@ pip install -r requirements.txt
 - **filter url here**と書かれたところをフィルターのURLに置換する
 
 オススメは[urlhaus-filter](https://gitlab.com/malware-filter/urlhaus-filter)のuBlock Origin版です
+## コマンドの実行権限を設定する
+- **main.py**の中の**admin uid here**の部分をコマンドの実行権限を持たせたいユーザーIDに置換する
+
+複数設定する場合は以下のようにする
+```py
+ADMIN_USER_IDS = [
+    1,
+    2,
+]
+```
 ## botを実行する
 - 1.ダブルクリックする(できない場合は2へ)
 - 2.ターミナルを開いてbotのあるディレクトリに移動する
