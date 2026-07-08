@@ -21,10 +21,8 @@ intents.members = True
 
 bot = Client(intents=intents)
 
-WHITELIST_FILE = 'invite_whitelist.json'
 BANLOG_FILE = 'ban_log.json'
 
-invite_whitelist_channels = defaultdict(set)
 user_message_counts = defaultdict(list)
 user_message_times = defaultdict(list)
 violation_tracker = defaultdict(lambda: defaultdict(lambda: {'count': 0, 'last_violation': None, 'violations': []}))
@@ -65,27 +63,6 @@ def save_banlog():
             json.dump(data, f, indent=4, ensure_ascii=False)
     except Exception as e:
         print(f"BAN履歴保存エラー: {e}")
-
-def load_whitelist():
-    global invite_whitelist_channels
-    try:
-        if os.path.exists(WHITELIST_FILE):
-            with open(WHITELIST_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                invite_whitelist_channels = defaultdict(set)
-                for guild_id, channels in data.items():
-                    invite_whitelist_channels[int(guild_id)] = set(channels)
-            print(f"ホワイトリストを読み込みました: {len(invite_whitelist_channels)} サーバー")
-    except Exception as e:
-        print(f"ホワイトリスト読み込みエラー: {e}")
-
-def save_whitelist():
-    try:
-        data = {str(guild_id): list(channels) for guild_id, channels in invite_whitelist_channels.items()}
-        with open(WHITELIST_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
-    except Exception as e:
-        print(f"ホワイトリスト保存エラー: {e}")
 
 from better_profanity import profanity
 profanity.load_censor_words()
@@ -438,7 +415,6 @@ async def on_ready():
     print(f'{bot.user.username} としてログインしました')
     print('------')
     
-    load_whitelist()
     load_banlog()
     
     print("フィルターを初期化中...")
@@ -511,7 +487,6 @@ async def on_message(message):
     
     checks = [
         check_token_send(message),
-        check_invite_links(message),
         check_shortlinks(message),
         check_malware_links(message),
         check_profanity(message),
@@ -621,28 +596,6 @@ def check_token_send(message):
             return "トークンの送信が検出されました"
     return None
 
-def check_invite_links(message):
-    invite_patterns = [
-        r'(?:https?://)?(?:www\.)?discord\.gg/([a-zA-Z0-9\-_]+)',
-        r'(?:https?://)?(?:www\.)?discord\.com/invite/([a-zA-Z0-9\-_]+)',
-        r'(?:https?://)?(?:www\.)?discordapp\.com/invite/([a-zA-Z0-9\-_]+)',
-        r'(?:https?://)?(?:www\.)?discord\.io/([a-zA-Z0-9\-_]+)',
-        r'(?:https?://)?(?:www\.)?discord\.me/([a-zA-Z0-9\-_]+)',
-        r'(?:https?://)?(?:www\.)?discord\.li/([a-zA-Z0-9\-_]+)',
-        r'(?:^|\s)discord\.gg/([a-zA-Z0-9\-_]+)',
-        r'(?:^|\s)discord\.com/invite/([a-zA-Z0-9\-_]+)',
-    ]
-    
-    for pattern in invite_patterns:
-        match = re.search(pattern, message.content, re.IGNORECASE)
-        if match:
-            allowed_channels = invite_whitelist_channels.get(message.guild.id, set())
-            if message.channel.id not in allowed_channels:
-                return "許可されていないチャンネルでの招待リンク送信が検出されました"
-            break
-    
-    return None
-
 def check_shortlinks(message):
     urls = extract_urls_from_message(message.content)
     
@@ -656,7 +609,7 @@ def check_shortlinks(message):
         
         for shortlink_domain in SHORTLINK_DOMAINS:
             if domain == shortlink_domain or domain.endswith('.' + shortlink_domain):
-                return f"短縮リンクが検出されました ({domain})"
+                return f"短縮リンクが検出されました"
     return None
 
 def check_malware_links(message):
@@ -668,7 +621,7 @@ def check_malware_links(message):
             check_url = 'http://' + check_url
         
         if check_url_with_filter(check_url):
-            return f"マルウェアリンクが検出されました ({url})"
+            return f"マルウェアリンクが検出されました"
     return None
 
 def check_spam(message):
