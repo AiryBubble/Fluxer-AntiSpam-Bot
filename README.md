@@ -49,5 +49,5 @@ py main.py
 
 以下のコマンドを実行する
 ```
-/unban ユーザーID 
+!unban ユーザーID 
 ```
