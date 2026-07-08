@@ -41,5 +41,3 @@ py main.py
 ```
 /unban ユーザーID 
 ```
-# 備考
-- それぞれのライブラリのライセンスは**LIBRARY_LICENSES**フォルダを参照してください
