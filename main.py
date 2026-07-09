@@ -410,6 +410,18 @@ SHORTLINK_DOMAINS = [
     'rinu.jp'
 ]
 
+async def send_and_delete(channel, content, delay=10):
+
+    try:
+        msg = await channel.send(content)
+        await asyncio.sleep(delay)
+        try:
+            await msg.delete()
+        except:
+            pass
+    except Exception as e:
+        print(f"メッセージ送信/削除エラー: {e}")
+
 @bot.on("ready")
 async def on_ready():
     print(f'{bot.user.username} としてログインしました')
@@ -450,7 +462,7 @@ async def on_message(message):
         
         if cmd == 'unban' and len(args) > 1:
             if not is_admin:
-                await message.channel.send('権限がありません (管理者権限が必要です)')
+                await send_and_delete(message.channel, '権限がありません (管理者権限が必要です)')
                 return
             
             try:
@@ -462,18 +474,18 @@ async def on_message(message):
                     del violation_tracker[message.guild.id][user_id]
                     save_banlog()
                 
-                await message.channel.send(f'ユーザーID `{user_id}` のBANを解除しました')
+                await send_and_delete(message.channel, f'ユーザーID `{user_id}` のBANを解除しました')
                     
             except ValueError:
-                await message.channel.send('無効なユーザーIDです。数字のみで指定してください')
+                await send_and_delete(message.channel, '無効なユーザーIDです。数字のみで指定してください')
             except Exception as e:
                 error_msg = str(e).lower()
                 if "unknown ban" in error_msg or "not banned" in error_msg or "not found" in error_msg:
-                    await message.channel.send(f'ユーザーID `{user_id}` はBANされていません')
+                    await send_and_delete(message.channel, f'ユーザーID `{user_id}` はBANされていません')
                 elif "forbidden" in error_msg or "permission" in error_msg:
-                    await message.channel.send('BAN解除の権限がありません')
+                    await send_and_delete(message.channel, 'BAN解除の権限がありません')
                 else:
-                    await message.channel.send(f'エラーが発生しました: {e}')
+                    await send_and_delete(message.channel, f'エラーが発生しました: {e}')
             return
         
         elif cmd == 'help':
@@ -482,7 +494,7 @@ async def on_message(message):
 !help - このヘルプを表示
 
 **注意:** unban コマンドは管理者権限が必要です"""
-            await message.channel.send(help_text)
+            await send_and_delete(message.channel, help_text)
             return
     
     checks = [
@@ -544,7 +556,8 @@ async def handle_violation(message, reason):
                 reason=f"累積違反 {violation_count} 回: {reason}",
                 delete_message_days=BAN_MESSAGE_DELETE_DAYS
             )
-            await message.channel.send(
+            await send_and_delete(
+                message.channel,
                 f'{member.mention} がBANされました\n'
                 f'理由: 累積違反 {violation_count} 回 - {reason}'
             )
@@ -552,12 +565,14 @@ async def handle_violation(message, reason):
             save_banlog()
             return "banned"
         except fluxer.Forbidden:
-            await message.channel.send(
+            await send_and_delete(
+                message.channel,
                 f'{member.mention} がBAN条件を満たしましたが、権限不足でBANできませんでした'
             )
             return "failed"
     else:
-        await message.channel.send(
+        await send_and_delete(
+            message.channel,
             f'{member.mention} 違反 {violation_count}/{BAN_THRESHOLD}: {reason}\n'
             f'あと {BAN_THRESHOLD - violation_count} 回の違反でBANされます'
         )
