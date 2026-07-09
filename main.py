@@ -488,15 +488,6 @@ async def on_message(message):
                     await send_and_delete(message.channel, f'エラーが発生しました: {e}')
             return
         
-        elif cmd == 'help':
-            help_text = """**利用可能なコマンド:**
-!unban <ユーザーID> - BANを解除します
-!help - このヘルプを表示
-
-**注意:** unban コマンドは管理者権限が必要です"""
-            await send_and_delete(message.channel, help_text)
-            return
-    
     checks = [
         check_token_send(message),
         check_shortlinks(message),
