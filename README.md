@@ -57,3 +57,10 @@ py main.py
 ```
 !help 
 ```
+# 備考
+botの送信するメッセージは**30秒**で削除されます
+
+**main.py**の以下の部分の数値を適当に置換することで増減できる
+```py
+async def send_and_delete(channel, content, delay=30):
+```
