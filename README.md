@@ -46,9 +46,9 @@ py main.py
 !unban ユーザーID 
 ```
 # 備考
-botの送信するメッセージは**30秒**で削除される
+botの送信するメッセージは**10秒**で削除される
 
 **main.py**の以下の部分の数値を適当に置換することで増減できる
 ```py
-async def send_and_delete(channel, content, delay=30):
+async def send_and_delete(channel, content, delay=10):
 ```
