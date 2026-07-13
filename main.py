@@ -27,10 +27,6 @@ user_message_counts = defaultdict(list)
 user_message_times = defaultdict(list)
 violation_tracker = defaultdict(lambda: defaultdict(lambda: {'count': 0, 'last_violation': None, 'violations': []}))
 
-ADMIN_USER_IDS = [
-    admin uid here,
-]
-
 def load_banlog():
     global violation_tracker
     try:
