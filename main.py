@@ -406,7 +406,7 @@ SHORTLINK_DOMAINS = [
     'rinu.jp'
 ]
 
-async def send_and_delete(channel, content, delay=30):
+async def send_and_delete(channel, content, delay=10):
 
     try:
         msg = await channel.send(content)
