@@ -441,28 +441,70 @@ async def on_message(message):
     if message.author.bot:
         return
     
-    is_admin = message.author.id in ADMIN_USER_IDS
+    is_admin = False
     
-    if not is_admin and message.guild:
+    if message.guild:
         try:
-            member = await message.guild.fetch_member(message.author.id)
-            if member:
-                if hasattr(member, 'permissions'):
-                    perms = member.permissions
-                    if hasattr(perms, 'administrator'):
-                        is_admin = perms.administrator
-                    elif hasattr(perms, 'value'):
-                        is_admin = (perms.value & 0x8) == 0x8
+            
+                member = await message.guild.fetch_member(message.author.id)
+                if member and hasattr(member, 'roles') and member.roles:
+                    
+                    roles_data = None
+                    
+                    if hasattr(message.guild, 'fetch_roles'):
+                        try:
+                            roles_data = await message.guild.fetch_roles()
+                        except:
+                            pass
+                            
+                    if not roles_data and hasattr(message.guild, 'roles'):
+                        roles_data = message.guild.roles
+
+                    guild_roles = {}
+                    if roles_data:
+                        if isinstance(roles_data, dict):
+                            for k, v in roles_data.items():
+                                guild_roles[str(k)] = v
+                        elif isinstance(roles_data, list):
+                            for r in roles_data:
+                                if hasattr(r, 'id'):
+                                    guild_roles[str(r.id)] = r
+                                    
+                    for role_item in member.roles:
+                        if hasattr(role_item, 'id'):
+                            role_id_str = str(role_item.id)
+                        else:
+                            role_id_str = str(role_item)
+                        
+                        role = guild_roles.get(role_id_str)
+                        
+                        if role:
+                            role_name = getattr(role, 'name', '不明なロール')
+                            if hasattr(role, 'permissions'):
+                                perms_val = role.permissions
+                                if hasattr(perms_val, 'value'):
+                                    perms_val = perms_val.value
+                                elif hasattr(perms_val, 'bitfield'):
+                                    perms_val = perms_val.bitfield
+                                
+                                try:
+                                    perms_int = int(perms_val)
+                                    if (perms_int & 8) == 8 or (perms_int & 4) == 4:
+                                        is_admin = True
+                                        break
+                                except (ValueError, TypeError):
+                                    pass
+
         except Exception as e:
             print(f"権限チェックエラー: {e}")
-    
+
     if message.content.startswith('!'):
         args = message.content[1:].split()
         cmd = args[0].lower()
         
         if cmd == 'unban' and len(args) > 1:
             if not is_admin:
-                await send_and_delete(message.channel, '権限がありません (管理者権限が必要です)')
+                await send_and_delete(message.channel, '権限がありません (管理者権限またはBAN権限が必要です)')
                 return
             
             try:
