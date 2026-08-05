@@ -709,7 +709,12 @@ def check_emoji_spam(message):
                                    r'\U00002702-\U000027B0\U000024C2-\U0001F251]', message.content))
     
     total_emoji = custom_emoji + unicode_emoji
-    if total_emoji > 0 and total_emoji / max(len(message.content.split()), 1) >= 0.5:
+    words = message.content.split()
+    
+    if total_emoji <= 5:
+        return None
+    
+    if total_emoji / max(len(words), 1) >= 0.8:
         return "絵文字スパムが検出されました"
     return None
 
