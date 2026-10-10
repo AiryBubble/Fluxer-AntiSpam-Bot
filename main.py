@@ -27,7 +27,6 @@ WHITELIST_FILE = "invite_whitelist.toml"
 MODLOG_FILE = "mod_log.toml"
 PROFANITY_DISABLED_FILE = "profanity_disabled.toml"
 SHORTLINK_DOMAINS_FILE = "shortlink_domains.txt"
-VERIFY_CONFIG_FILE = "verify_config.toml"
 
 intents = fluxer.Intents.all()
 bot = fluxer.Bot(command_prefix=PREFIX, intents=intents)
@@ -39,7 +38,6 @@ recent_messages: dict[tuple[int, int], list[tuple[str, datetime]]] = defaultdict
 recent_message_times: dict[tuple[int, int], list[datetime]] = defaultdict(list)
 recent_joins: dict[int, list[datetime]] = defaultdict(list)
 raid_modes: dict[int, dict] = {}
-verify_configs: dict[str, dict] = {}
 channel_guild_cache: dict[int, int] = {}
 shortlink_domains: set[str] = set()
 state_lock = asyncio.Lock()
@@ -111,7 +109,6 @@ def load_state() -> None:
         invite_whitelist_channels[int(guild_id)] = {int(channel_id) for channel_id in channel_ids}
     disabled = _load_toml(PROFANITY_DISABLED_FILE).get("disabled_guilds", [])
     profanity_disabled_guilds.update(int(guild_id) for guild_id in disabled)
-    verify_configs.update(_load_toml(VERIFY_CONFIG_FILE))
     for guild_id, users in _load_toml(MODLOG_FILE).items():
         for user_id, data in users.items():
             if data.get("status") != "banned":
@@ -414,7 +411,6 @@ async def help_command(ctx):
         "`nn.profanity enable/disable`\n"
         "`nn.violation check/reset <user_id>`\n"
         "`nn.unban <user_id>` / `nn.antiraid status/disable`\n"
-        "`nn.verify status/disable` / `nn.resetup_automod` / `nn.disable_external_apps`"
     )
 
 @bot.command(name="ping")
@@ -531,51 +527,6 @@ async def antiraid_command(ctx, action: str = "status"):
         await ctx.reply("レイド対策モードを解除しました")
     else:
         await ctx.reply("使用方法: `nn.antiraid status` または `disable`")
-
-@bot.command(name="verify")
-async def verify_command(ctx, action: str = "status", *, arguments: str = ""):
-    if not await require_admin(ctx):
-        return
-    guild = await cached_guild_for_message(ctx)
-    guild_id = str(guild.id)
-    if action == "status":
-        config = verify_configs.get(guild_id)
-        if config:
-            await ctx.reply(f"認証設定あり\n未認証ロール: `{config.get('unverified_role', '不明')}`\n認証済みロール: `{config.get('verified_role', '不明')}`\nチャンネル: `{config.get('channel', '不明')}`")
-        else:
-            await ctx.reply("認証システムは未設定です。セットアップは `nn.verify setup <未認証ロールID> <認証済みロールID> <チャンネルID>` で行えます。")
-    elif action == "disable":
-        if verify_configs.pop(guild_id, None) is not None:
-            _save_toml(VERIFY_CONFIG_FILE, verify_configs)
-            await ctx.reply("認証システムの設定を削除しました。既存ロールは変更していません。")
-        else:
-            await ctx.reply("認証システムは設定されていません。")
-    elif action == "setup":
-        try:
-            unverified_id, verified_id, channel_id = (int(value) for value in arguments.split())
-        except (TypeError, ValueError):
-            await ctx.reply("使用方法: `nn.verify setup <未認証ロールID> <認証済みロールID> <チャンネルID>`")
-            return
-        if unverified_id == verified_id:
-            await ctx.reply("未認証ロールと認証済みロールには異なるロールを指定してください")
-            return
-        await ctx.reply("Fluxer SDKではユーザー操作用ボタン/モーダルとチャンネル参照のAPIが確認できないため、設定は保存できません。")
-    elif action == "panel":
-        await ctx.reply("ボタン/モーダルの認証パネルはFluxer SDKに対応APIがないため設置できません。")
-    else:
-        await ctx.reply("使用方法: `nn.verify status/disable/setup/panel`")
-
-@bot.command(name="resetup_automod")
-async def resetup_automod_command(ctx):
-    if not await require_admin(ctx):
-        return
-    await ctx.reply("FluxerのAutoModルールAPIは現在未実装のため、自動ルールは作成できません。メッセージ監視によるトークン検知は有効です。")
-
-@bot.command(name="disable_external_apps")
-async def disable_external_apps_command(ctx):
-    if not await require_admin(ctx):
-        return
-    await ctx.reply("外部アプリ権限を一括変更する機能はFluxer APIで確認できないため、変更していません。")
 
 @bot.command(name="uninstall")
 async def uninstall_command(ctx, confirmation: str = ""):
