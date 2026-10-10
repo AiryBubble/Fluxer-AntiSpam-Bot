@@ -1,0 +1,6 @@
+fluxer.py>=0.4.2,<0.5
+python-dotenv
+safetext
+requests
+toml
+tomli; python_version < "3.11"
