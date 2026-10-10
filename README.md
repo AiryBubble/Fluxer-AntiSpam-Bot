@@ -1,4 +1,4 @@
-# NostraNord
+# NostraNord Fluxer Edition
 
 ## 主な機能
 
@@ -13,7 +13,7 @@
 ## Fluxer版
 
 1. `pip install -r requirements.txt` で依存関係を入れます。
-2. `.env` に `FLUXER_BOT_TOKEN=FluxerのBotトークン` を設定します（Discord版は引き続き `DISCORD_TOKEN` を使用）。
+2. `.env` に `FLUXER_BOT_TOKEN=FluxerのBotトークン` を設定します。
 3. Botにメッセージ閲覧/送信、メッセージ管理、メンバーのBAN/キック権限を付け、`python main.py` で起動します。
 
 Fluxerのコマンドは `nn.` プレフィックスです。管理コマンドは実行者がサーバー所有者かを確認し、さらにメンバーの各ロールを取得して `ADMINISTRATOR` 権限ビットが含まれるか検査します。ロール照会に失敗した場合は安全側に倒して拒否します。
