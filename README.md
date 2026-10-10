@@ -12,11 +12,9 @@
 
 ## Fluxer版
 
-Fluxer向けのメッセージコマンド版は `fluxer_main.py` です。Discord版の `main.py` はそのまま利用できます。
-
 1. `pip install -r requirements.txt` で依存関係を入れます。
 2. `.env` に `FLUXER_BOT_TOKEN=FluxerのBotトークン` を設定します（Discord版は引き続き `DISCORD_TOKEN` を使用）。
-3. Botにメッセージ閲覧/送信、メッセージ管理、メンバーのBAN/キック権限を付け、`python fluxer_main.py` で起動します。
+3. Botにメッセージ閲覧/送信、メッセージ管理、メンバーのBAN/キック権限を付け、`python main.py` で起動します。
 
 Fluxerのコマンドは `nn.` プレフィックスです。管理コマンドは実行者がサーバー所有者かを確認し、さらにメンバーの各ロールを取得して `ADMINISTRATOR` 権限ビットが含まれるか検査します。ロール照会に失敗した場合は安全側に倒して拒否します。
 
