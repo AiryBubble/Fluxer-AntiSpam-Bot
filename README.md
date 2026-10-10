@@ -19,7 +19,7 @@ Fluxerのコマンドは `nn.` プレフィックスです。管理コマンド�
 
 Fluxer.py版のコマンド応答は通常の公開メッセージです。実行者だけに見えるエフェメラル返信には対応していません。
 
-主なコマンド: `nn.help`, `nn.whitelist add/remove/list <channel_id>`, `nn.profanity enable/disable`, `nn.violation check/reset <user_id>`, `nn.unban <user_id>`, `nn.antiraid status/disable`, `nn.verify status/disable`, `nn.uninstall confirm`。
+主なコマンド: `nn.help`, `nn.whitelist add/remove/list <channel_id>`, `nn.profanity enable/disable`, `nn.violation check/reset <user_id>`, `nn.unban <user_id>`, `nn.antiraid status/disable`, `nn.uninstall confirm`。
 
 Fluxer版は招待リンク、短縮リンク、トークン、日英不適切語、連投/フラッド、絵文字・Markdownスパム、マルウェアURLを検査します。違反1・2回目は警告し、3回目にBANします。現在利用しているFluxer SDKでDiscord相当のAutoMod、外部アプリ権限一括編集、ボタン/モーダル認証パネルAPIが確認できない機能は未対応とします。レイド検知では状態を記録し、作成直後のアカウントを検出した場合はBotにキック権限があると確認できたときにキックします。レイドモード中のサーバー認証レベル変更APIは含みません。
 
