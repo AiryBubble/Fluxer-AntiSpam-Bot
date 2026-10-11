@@ -28,3 +28,5 @@ Fluxer版は招待リンク、短縮リンク、トークン、日英不適切�
 - [Phishing URL Blocklist](https://gitlab.com/malware-filter/phishing-filter)
 # 注記
 safetextの依存関係でPythonのバージョンは3.12.xがいいかと思われます。
+
+Discord版は[ここから](https://github.com/AiryBubble/NostraNord-Open)
