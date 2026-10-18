@@ -22,6 +22,8 @@ RAID_JOIN_THRESHOLD = 5
 RAID_JOIN_WINDOW_SECONDS = 10
 RAID_NEW_ACCOUNT_MINUTES = 10
 RAID_MODE_DURATION_MINUTES = 15
+COMMAND_RESULT_DELETE_SECONDS = 10
+WARNING_LOG_DELETE_SECONDS = 30
 
 WHITELIST_FILE = "invite_whitelist.toml"
 MODLOG_FILE = "mod_log.toml"
@@ -42,6 +44,36 @@ channel_guild_cache: dict[int, int] = {}
 shortlink_domains: set[str] = set()
 state_lock = asyncio.Lock()
 raid_lock = asyncio.Lock()
+
+
+async def delete_message_later(message, delay_seconds: int) -> None:
+    await asyncio.sleep(delay_seconds)
+    try:
+        await message.delete()
+    except (fluxer.Forbidden, fluxer.NotFound, fluxer.HTTPException, RuntimeError) as exc:
+        print(f"自動メッセージ削除に失敗しました: {exc}")
+
+
+async def reply_with_auto_delete(ctx, content: str, delay_seconds: int):
+    message = await ctx.reply(content)
+    if message is not None:
+        asyncio.create_task(delete_message_later(message, delay_seconds))
+    return message
+
+
+async def send_with_auto_delete(channel, content: str, delay_seconds: int):
+    message = await channel.send(content)
+    if message is not None:
+        asyncio.create_task(delete_message_later(message, delay_seconds))
+    return message
+
+
+async def command_reply(ctx, content: str):
+    return await reply_with_auto_delete(ctx, content, COMMAND_RESULT_DELETE_SECONDS)
+
+
+async def warning_log(channel, content: str):
+    return await send_with_auto_delete(channel, content, WARNING_LOG_DELETE_SECONDS)
 
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9]{23,40}\.[A-Za-z0-9_-]{5,10}\.[A-Za-z0-9_-]{20,45}")
 INVITE_PATTERN = re.compile(
@@ -158,10 +190,10 @@ async def require_admin(ctx) -> bool:
         print(f"コマンド実行サーバーの取得に失敗しました: {exc}")
         guild = None
     if guild is None:
-        await ctx.reply("このコマンドはサーバー内でのみ使用できます。")
+        await command_reply(ctx, "このコマンドはサーバー内でのみ使用できます。")
         return False
     if not await member_is_admin(guild, ctx.author.id):
-        await ctx.reply("このコマンドには管理者権限が必要です。メンバー権限と各ロールの管理者権限を確認しましたが、許可されませんでした。")
+        await command_reply(ctx, "このコマンドには管理者権限が必要です。メンバー権限と各ロールの管理者権限を確認しましたが、許可されませんでした。")
         return False
     return True
 
@@ -291,12 +323,12 @@ async def process_violation(message, guild: fluxer.Guild, reason: str) -> None:
             member = await guild.fetch_member(user_id)
             if not await can_moderate(guild, int(bot.user.id), "BAN_MEMBERS"):
                 channel = await bot.fetch_channel(str(message.channel_id))
-                await channel.send("BAN条件を満たしましたが、BotのロールにBAN権限がないためBANできませんでした。")
+                await warning_log(channel, "BAN条件を満たしましたが、BotのロールにBAN権限がないためBANできませんでした。")
                 return
             can_act, hierarchy_error = await can_moderate_target(guild, user_id)
             if not can_act:
                 channel = await bot.fetch_channel(str(message.channel_id))
-                await channel.send(f"BAN条件を満たしましたが、BANできませんでした。{hierarchy_error}")
+                await warning_log(channel, f"BAN条件を満たしましたが、BANできませんでした。{hierarchy_error}")
                 return
             await member.ban(delete_message_seconds=BAN_MESSAGE_DELETE_DAYS * 86400,
                             reason=f"累積違反 {count} 回: {reason}")
@@ -307,7 +339,7 @@ async def process_violation(message, guild: fluxer.Guild, reason: str) -> None:
                 save_modlog()
         else:
             channel = await bot.fetch_channel(str(message.channel_id))
-            await channel.send(
+            await warning_log(channel,
                 f"⚠️ {message.author.mention} に警告しました。理由: {reason}\n"
                 f"違反回数: {count}/{BAN_THRESHOLD}（あと {BAN_THRESHOLD-count} 回でBAN）"
             )
@@ -315,7 +347,7 @@ async def process_violation(message, guild: fluxer.Guild, reason: str) -> None:
         print(f"違反へのモデレーションに失敗しました: {exc}")
         try:
             channel = await bot.fetch_channel(str(message.channel_id))
-            await channel.send(f"違反を検出しましたが、処分に失敗しました: {exc}")
+            await warning_log(channel, f"違反を検出しましたが、処分に失敗しました: {exc}")
         except (fluxer.Forbidden, fluxer.NotFound, fluxer.HTTPException, RuntimeError) as notify_exc:
             print(f"処分失敗の通知にも失敗しました (guild={guild.id}): {notify_exc}")
 
@@ -404,7 +436,7 @@ async def on_message(message):
 
 @bot.command(name="help")
 async def help_command(ctx):
-    await ctx.reply(
+    await command_reply(ctx,
         "**botname Fluxer コマンド**\n"
         "`nn.ping` / `nn.help`\n"
         "`nn.whitelist add/remove/list <channel_id>`\n"
@@ -415,7 +447,7 @@ async def help_command(ctx):
 
 @bot.command(name="ping")
 async def ping_command(ctx):
-    await ctx.reply("Pong!")
+    await command_reply(ctx, "Pong!")
 
 @bot.command(name="whitelist")
 async def whitelist_command(ctx, action: str = "list", channel_id: str = ""):
@@ -425,22 +457,22 @@ async def whitelist_command(ctx, action: str = "list", channel_id: str = ""):
     guild_id = int(guild.id)
     channels = invite_whitelist_channels[guild_id]
     if action == "list":
-        await ctx.reply("許可チャンネル: " + (", ".join(f"`{item}`" for item in sorted(channels)) if channels else "なし"))
+        await command_reply(ctx, "許可チャンネル: " + (", ".join(f"`{item}`" for item in sorted(channels)) if channels else "なし"))
         return
     try:
         target = int(channel_id.strip("<#>"))
     except ValueError:
-        await ctx.reply("使用方法: `nn.whitelist add <channel_id>` または `remove <channel_id>`")
+        await command_reply(ctx, "使用方法: `nn.whitelist add <channel_id>` または `remove <channel_id>`")
         return
     if action == "add":
         channels.add(target)
     elif action == "remove":
         channels.discard(target)
     else:
-        await ctx.reply("操作は `add`、`remove`、`list` のいずれかです")
+        await command_reply(ctx, "操作は `add`、`remove`、`list` のいずれかです")
         return
     save_whitelist()
-    await ctx.reply(f"チャンネル `{target}` の招待リンク許可を更新しました")
+    await command_reply(ctx, f"チャンネル `{target}` の招待リンク許可を更新しました")
 
 @bot.command(name="profanity")
 async def profanity_command(ctx, action: str = ""):
@@ -453,10 +485,10 @@ async def profanity_command(ctx, action: str = ""):
     elif action == "enable":
         profanity_disabled_guilds.discard(guild_id)
     else:
-        await ctx.reply("使用方法: `nn.profanity enable` または `disable`")
+        await command_reply(ctx, "使用方法: `nn.profanity enable` または `disable`")
         return
     save_profanity_settings()
-    await ctx.reply(f"不適切語フィルターを{'無効' if action == 'disable' else '有効'}にしました")
+    await command_reply(ctx, f"不適切語フィルターを{'無効' if action == 'disable' else '有効'}にしました")
 
 @bot.command(name="violation")
 async def violation_command(ctx, action: str = "", user_id: str = ""):
@@ -465,24 +497,24 @@ async def violation_command(ctx, action: str = "", user_id: str = ""):
     try:
         target_id = int(user_id.strip("<@!>"))
     except ValueError:
-        await ctx.reply("使用方法: `nn.violation check/reset <user_id>`")
+        await command_reply(ctx, "使用方法: `nn.violation check/reset <user_id>`")
         return
     guild = await cached_guild_for_message(ctx)
     guild_id = int(guild.id)
     data = violation_tracker.get(guild_id, {}).get(target_id)
     if action == "check":
         if not data:
-            await ctx.reply(f"`{target_id}` の違反履歴はありません")
+            await command_reply(ctx, f"`{target_id}` の違反履歴はありません")
             return
         recent = data.get("violations", [])[-5:]
         details = "\n".join(f"• {entry['reason']} ({entry['time']})" for entry in recent) or "なし"
-        await ctx.reply(f"`{target_id}` の違反回数: {data.get('count', 0)}/{BAN_THRESHOLD}\n最近の違反:\n{details}")
+        await command_reply(ctx, f"`{target_id}` の違反回数: {data.get('count', 0)}/{BAN_THRESHOLD}\n最近の違反:\n{details}")
     elif action == "reset":
         violation_tracker.get(guild_id, {}).pop(target_id, None)
         save_modlog()
-        await ctx.reply(f"`{target_id}` の違反履歴をリセットしました（既に適用された処分は解除されません）")
+        await command_reply(ctx, f"`{target_id}` の違反履歴をリセットしました（既に適用された処分は解除されません）")
     else:
-        await ctx.reply("操作は `check` または `reset` です")
+        await command_reply(ctx, "操作は `check` または `reset` です")
 
 @bot.command(name="unban")
 async def unban_command(ctx, user_id: str = ""):
@@ -490,23 +522,23 @@ async def unban_command(ctx, user_id: str = ""):
         return
     guild = await cached_guild_for_message(ctx)
     if not await can_moderate(guild, int(ctx.author.id), "BAN_MEMBERS"):
-        await ctx.reply("この操作にはBAN権限も必要です。メンバーのロール権限を確認してください")
+        await command_reply(ctx, "この操作にはBAN権限も必要です。メンバーのロール権限を確認してください")
         return
     if not await can_moderate(guild, int(bot.user.id), "BAN_MEMBERS"):
-        await ctx.reply("BANを解除するにはBotのロールにもBAN権限が必要です")
+        await command_reply(ctx, "BANを解除するにはBotのロールにもBAN権限が必要です")
         return
     try:
         target = int(user_id)
         await guild.unban(target, reason=f"{ctx.author.username} によるBAN解除")
     except ValueError:
-        await ctx.reply("使用方法: `nn.unban <user_id>`")
+        await command_reply(ctx, "使用方法: `nn.unban <user_id>`")
         return
     except (fluxer.Forbidden, fluxer.NotFound, fluxer.HTTPException, RuntimeError) as exc:
-        await ctx.reply(f"BAN解除に失敗しました: {exc}")
+        await command_reply(ctx, f"BAN解除に失敗しました: {exc}")
         return
     violation_tracker.get(int(guild.id), {}).pop(target, None)
     save_modlog()
-    await ctx.reply(f"`{target}` のBANを解除し、違反履歴を削除しました")
+    await command_reply(ctx, f"`{target}` のBANを解除し、違反履歴を削除しました")
 
 @bot.command(name="antiraid")
 async def antiraid_command(ctx, action: str = "status"):
@@ -519,21 +551,21 @@ async def antiraid_command(ctx, action: str = "status"):
         if data:
             started = datetime.fromisoformat(data["started_at"])
             remaining = max(0, RAID_MODE_DURATION_MINUTES * 60 - (datetime.now(timezone.utc) - started).total_seconds())
-            await ctx.reply(f"レイド対策モードは有効です。残り約{int(remaining // 60)}分{int(remaining % 60)}秒")
+            await command_reply(ctx, f"レイド対策モードは有効です。残り約{int(remaining // 60)}分{int(remaining % 60)}秒")
         else:
-            await ctx.reply("レイド対策モードは無効です")
+            await command_reply(ctx, "レイド対策モードは無効です")
     elif action == "disable":
         raid_modes.pop(guild_id, None)
-        await ctx.reply("レイド対策モードを解除しました")
+        await command_reply(ctx, "レイド対策モードを解除しました")
     else:
-        await ctx.reply("使用方法: `nn.antiraid status` または `disable`")
+        await command_reply(ctx, "使用方法: `nn.antiraid status` または `disable`")
 
 @bot.command(name="uninstall")
 async def uninstall_command(ctx, confirmation: str = ""):
     if not await require_admin(ctx):
         return
     if confirmation.lower() != "confirm":
-        await ctx.reply("サーバー設定を削除するには `nn.uninstall confirm` を実行してください。")
+        await command_reply(ctx, "サーバー設定を削除するには `nn.uninstall confirm` を実行してください。")
         return
     guild = await cached_guild_for_message(ctx)
     guild_id = int(guild.id)
@@ -544,7 +576,7 @@ async def uninstall_command(ctx, confirmation: str = ""):
     save_whitelist()
     save_profanity_settings()
     save_modlog()
-    await ctx.reply("サーバーに保存されたbotname設定と違反履歴を削除しました。Botの退出はFluxer SDKで未確認です。")
+    await command_reply(ctx, "サーバーに保存されたbotname設定と違反履歴を削除しました。Botの退出はFluxer SDKで未確認です。")
 
 @bot.command(name="status")
 async def status_command(ctx):
@@ -552,7 +584,7 @@ async def status_command(ctx):
         return
     guild = await cached_guild_for_message(ctx)
     guild_id = int(guild.id)
-    await ctx.reply(
+    await command_reply(ctx,
         f"レイド対策: {'有効' if guild_id in raid_modes else '無効'}\n"
         f"不適切語フィルター: {'無効' if guild_id in profanity_disabled_guilds else '有効'}\n"
         f"招待リンク許可チャンネル: {len(invite_whitelist_channels.get(guild_id, set()))}件"
@@ -562,7 +594,7 @@ async def status_command(ctx):
 async def on_command_error(ctx, error):
     print(f"コマンドエラー: {error}")
     try:
-        await ctx.reply(f"コマンドを実行できませんでした: {error}")
+        await command_reply(ctx, f"コマンドを実行できませんでした: {error}")
     except (fluxer.Forbidden, fluxer.HTTPException):
         pass
 
