@@ -1,4 +1,4 @@
-# NostraNord Fluxer Edition
+# Fluxer Antispam bot
 
 ## 主な機能
 
@@ -8,8 +8,6 @@
 - 違反時の警告と、累積違反時のBAN
 - レイド対策とトークン送信防止
 - nn.コマンドによる各機能・設定の管理
-
-## Fluxer版
 
 1. `pip install -r requirements.txt` で依存関係を入れます。
 2. `.env` に `FLUXER_BOT_TOKEN=FluxerのBotトークン` を設定します。
@@ -21,7 +19,7 @@ Fluxer.py版のコマンド応答は通常の公開メッセージです。実�
 
 主なコマンド: `nn.help`, `nn.whitelist add/remove/list <channel_id>`, `nn.profanity enable/disable`, `nn.violation check/reset <user_id>`, `nn.unban <user_id>`, `nn.antiraid status/disable`, `nn.uninstall confirm`。
 
-Fluxer版は招待リンク、短縮リンク、トークン、日英不適切語、連投/フラッド、絵文字・Markdownスパム、マルウェアURLを検査します。違反1・2回目は警告し、3回目にBANします。現在利用しているFluxer SDKでDiscord相当のAutoMod、外部アプリ権限一括編集、ボタン/モーダル認証パネルAPIが確認できない機能は未対応とします。レイド検知では状態を記録し、作成直後のアカウントを検出した場合はBotにキック権限があると確認できたときにキックします。レイドモード中のサーバー認証レベル変更APIは含みません。
+Fluxerは招待リンク、短縮リンク、トークン、日英不適切語、連投/フラッド、絵文字・Markdownスパム、マルウェアURLを検査します。違反1・2回目は警告し、3回目にBANします。レイド検知では状態を記録し、作成直後のアカウントを検出した場合はBotにキック権限があると確認できたときにキックします。レイドモード中のサーバー認証レベル変更APIは含みません。
 
 ## url_checker.pyで使用するオススメのフィルター
 - [Online Malicious URL Blocklist](https://gitlab.com/malware-filter/urlhaus-filter)
